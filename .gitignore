@@ -1,0 +1,5 @@
+# Junk files.
+/dist-newstyle
+*.exe
+*.out
+*.hi
