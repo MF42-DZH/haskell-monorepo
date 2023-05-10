@@ -2,12 +2,26 @@
 
 module Util where
 
+import Control.Monad
 import Control.Monad.ST
 import Data.Array
 import Data.Array.MArray
 import Data.Array.ST
 import Data.STRef
 import System.Random
+
+whileM :: Monad m => m Bool -> m () -> m ()
+whileM cond body = cond >>= (`when` (body >> whileM cond body))
+
+untilM :: Monad m => m Bool -> m () -> m ()
+untilM cond action = action >> cond >>= (`unless` untilM cond action)
+
+count :: (a -> Bool) -> [a] -> Int
+count p = go 0
+  where go acc [] = acc
+        go acc (x : xs)
+          | p x       = go (acc + 1) xs
+          | otherwise = go acc xs
 
 shuffleST' :: Int -> [a] -> [a]
 shuffleST' seed= fst . shuffleST (mkStdGen seed)
