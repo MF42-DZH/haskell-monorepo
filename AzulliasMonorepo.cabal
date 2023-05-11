@@ -59,7 +59,17 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    -- exposed-modules:  MyLib
+    -- Cabal doesn't support any kind of wildcard expose which is stupid as hell.
+    -- But the maintainers won't budge so goddamn you all.
+    exposed-modules:  Control.Concurrent.Joinable
+                    , Control.Monad.Trans.BiState
+                    , Control.Monad.Trans.RState
+                    , Data.ALaCarte
+                    , Data.Mutable
+                    , Data.Trie
+                    , Text.ScannerGeneric
+                    , Refl
+                    , Util
 
     -- Modules included in this library but not exported.
     -- other-modules:

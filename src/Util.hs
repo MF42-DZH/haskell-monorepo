@@ -2,19 +2,33 @@
 
 module Util where
 
+import Control.Applicative ( (<|>) )
 import Control.Monad
 import Control.Monad.ST
 import Data.Array
 import Data.Array.MArray
 import Data.Array.ST
+import Data.Bool
 import Data.STRef
 import System.Random
+
+findM :: Monad m => (a -> m Bool) -> [a] -> m (Maybe a)
+findM _ []       = return Nothing
+findM p (x : xs) = (<|>) <$> (bool Nothing (Just x) <$> p x) <*> findM p xs
+
+find :: (a -> Bool) -> [a] -> Maybe a
+find _ []       = Nothing
+find p (x : xs) = bool Nothing (Just x) (p x) <|> find p xs
 
 whileM :: Monad m => m Bool -> m () -> m ()
 whileM cond body = cond >>= (`when` (body >> whileM cond body))
 
 untilM :: Monad m => m Bool -> m () -> m ()
 untilM cond action = action >> cond >>= (`unless` untilM cond action)
+
+infixl 4 <~>
+(<~>) :: Applicative f => f a -> f b -> f (a, b)
+x <~> y = (,) <$> x <*> y
 
 count :: (a -> Bool) -> [a] -> Int
 count p = go 0
