@@ -12,6 +12,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BSI
 import qualified Data.ByteString.Char8 as C8
 import Data.Functor.Identity
+import Data.Maybe
 import Data.Word
 
 -- Simple result type for these parsers.
@@ -47,32 +48,41 @@ instance Monad m => Monad (BSPT m) where
 instance MonadTrans BSPT where
   lift m = BSPT (\ (_, off) -> lift ((,off) <$> m))
 
+eof :: Monad m => BSPT m ()
+eof = BSPT (\ (inp, off) -> if   isNothing (inp `BS.indexMaybe` off)
+                            then return ((), off)
+                            else throwE ["EOF not reached yet"])
+
 satisfy :: Monad m => (Word8 -> Bool) -> BSPT m Word8
 satisfy p = BSPT $ \ (inp, off) ->
-  let chr = inp `BS.index` off
-  in  if   p chr
-      then return (chr, off + 1)
-      else throwE $ [ concat [ "predicate does not match character "
-                             , show (fromC8 chr)
-                             , " in input "
-                             , show inp
-                             , " at offset "
-                             , show off
-                             ] ]
+  let chr = inp `BS.indexMaybe` off
+  in  case chr of
+        Just c  -> if   p c
+                   then return (c, off + 1)
+                   else throwE $ [ concat [ "predicate does not match character "
+                                          , show (fromC8 c)
+                                          , " in input "
+                                          , show inp
+                                          , " at offset "
+                                          , show off
+                                          ] ]
+        Nothing -> throwE ["reached EOF"]
 
 char :: Monad m => Word8 -> BSPT m Word8
 char c = BSPT $ \ (inp, off) ->
-  let chr = inp `BS.index` off
-  in  if   c == chr
-      then return (chr, off + 1)
-      else throwE $ [ concat [ show (fromC8 c)
-                             , " does not match character "
-                             , show (fromC8 chr)
-                             , " in input "
-                             , show inp
-                             , " at offset "
-                             , show off
-                             ] ]
+  let chr = inp `BS.indexMaybe` off
+  in  case chr of
+        Just c' -> if   c == c'
+                   then return (c, off + 1)
+                   else throwE $ [ concat [ show (fromC8 c')
+                                          , " does not match character "
+                                          , show (fromC8 c)
+                                          , " in input "
+                                          , show inp
+                                          , " at offset "
+                                          , show off
+                                          ] ]
+        Nothing -> throwE ["reached EOF"]
 
 string :: Monad m => ByteString -> BSPT m ByteString
 string str = foldr (\ c p -> char c *> p) (pure str) (BS.unpack str)
