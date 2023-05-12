@@ -2,23 +2,23 @@
 
 module Text.BSP.Monolith where
 
-import Control.Applicative
-import Control.Monad
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.Except
+import Control.Applicative ( Alternative(..) )
+import Control.Monad ( void )
+import Control.Monad.Trans.Class ( MonadTrans(..) )
+import Control.Monad.Trans.Except ( ExceptT(..), throwE, runExceptT, runExcept )
 import Data.ByteString ( ByteString )
 import Data.ByteString.Internal ( c2w, w2c )
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BSI
-import qualified Data.ByteString.Char8 as C8
-import Data.Functor.Identity
-import Data.Maybe
-import Data.Word
+import Data.Functor.Identity ( Identity )
+import Data.Maybe ( isNothing )
+import Data.Word ( Word8 )
 
 -- Simple result type for these parsers.
 -- Use runExceptT and runExcept for extraction of an Either.
 type MResult m a = ExceptT [String] m (a, Int)
 type Result a    = MResult Identity a
+type Parsed a    = Either [String] a
 
 newtype BSPT m a
   = BSPT { runBSPT :: (ByteString, Int) -> MResult m a }
@@ -28,6 +28,12 @@ type BSP a = BSPT Identity a
 
 runBSP :: BSP a -> (ByteString, Int) -> Result a
 runBSP p = runBSPT p
+
+parseT :: Monad m => BSPT m a -> ByteString -> m (Parsed a)
+parseT p inp = runExceptT (fst <$> runBSPT p (inp, 0))
+
+parse :: BSP a -> ByteString -> Parsed a
+parse p inp = runExcept (fst <$> runBSP p (inp, 0))
 
 instance Monad m => Applicative (BSPT m) where
   pure x = BSPT (\ (_, off) -> return (x, off))
