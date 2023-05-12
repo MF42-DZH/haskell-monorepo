@@ -9,6 +9,7 @@ import Control.Monad.Trans.Except
 import Data.ByteString ( ByteString )
 import Data.ByteString.Internal ( c2w, w2c )
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Internal as BSI
 import qualified Data.ByteString.Char8 as C8
 import Data.Functor.Identity
 import Data.Word
@@ -76,6 +77,15 @@ char c = BSPT $ \ (inp, off) ->
 string :: Monad m => ByteString -> BSPT m ByteString
 string str = foldr (\ c p -> char c *> p) (pure str) (BS.unpack str)
 
+space :: Monad m => BSPT m ()
+space = void (satisfy BSI.isSpaceWord8)
+
+spaces :: Monad m => BSPT m ()
+spaces = void (many space)
+
+peek :: Monad m => BSPT m ByteString
+peek = BSPT (\ (inp, off) -> return (BS.drop off inp, off))
+
 chainr1 :: Monad m => BSPT m a -> BSPT m (a -> a -> a) -> BSPT m a
 chainr1 px pop = loop
   where
@@ -93,8 +103,30 @@ chainl1 px pop = px >>= loop
 chainl :: Monad m => BSPT m a -> BSPT m (a -> a -> a) -> a -> BSPT m a
 chainl px pop x = chainl1 px pop ||| pure x
 
-peek :: Monad m => BSPT m ByteString
-peek = BSPT (\ (inp, off) -> return (BS.drop off inp, off))
+skipMany :: Monad m => BSPT m a -> BSPT m ()
+skipMany = void . many
+
+skipSome :: Monad m => BSPT m a -> BSPT m ()
+skipSome = void . some
+
+sepBy :: Monad m => BSPT m a -> BSPT m sep -> BSPT m [a]
+sepBy px psep = sepBy1 px psep ||| pure []
+
+sepBy1 :: Monad m => BSPT m a -> BSPT m sep -> BSPT m [a]
+sepBy1 px psep = (:) <$> px <*> many (psep *> px)
+
+optionally :: Monad m => a -> BSPT m a -> BSPT m a
+optionally x px = px ||| pure x
+
+optional :: Monad m => BSPT m a -> BSPT m ()
+optional px = void px ||| pure ()
+
+between, betwixt :: Monad m => BSPT m l -> BSPT m r -> BSPT m a -> BSPT m a
+between pl pr px = pl *> px <* pr
+betwixt          = between
+
+choice :: Monad m => [BSPT m a] -> BSPT m a
+choice = foldr (|||) empty
 
 failure :: Monad m => String -> BSPT m a
 failure msg = BSPT (const (throwE [msg]))
