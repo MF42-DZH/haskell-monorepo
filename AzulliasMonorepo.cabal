@@ -67,6 +67,7 @@ library
                     , Data.ALaCarte
                     , Data.Mutable
                     , Data.Trie
+                    , Text.BSP.Monolith
                     , Text.ScannerGeneric
                     , Refl
                     , Util
