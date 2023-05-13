@@ -53,24 +53,6 @@ instance Reifies s (Ord'ish a) => Eq (O a s) where
 instance Reifies s (Ord'ish a) => Ord (O a s) where
   compare a b = compare'ish (reflect a) (runO a) (runO b)
 
-withOrd :: (a -> a -> Ordering) -> (forall {s :: Type} . Reifies s (Ord'ish a) => O a s) -> a
-withOrd cmp v = reify (Ord'ish cmp) (runO . asProxyOf v)
-
-largest :: Integer
-largest = withOrd (flip compare) $ minimum (O <$> [3, 7, 9, 2, 4, 0, 1, 5, 7, 8, 6])
-
-class Constantly x r where
-  constantly :: x -> r
-
-instance {-# OVERLAPPABLE #-} (x ~ x') => Constantly x x' where
-  constantly = id
-
-instance {-# OVERLAPPING #-} Constantly x b => Constantly x (a -> b) where
-  constantly x _ = constantly x
-
-testCons :: Int
-testCons = constantly 5 '2' [] Nothing (Right "what") () undefined
-
 -- https://www.schoolofhaskell.com/user/thoughtpolice/using-reflection
 newtype Lift (p :: Type -> Constraint) (a :: Type) (s :: Type)
   = Lift { lower :: a }

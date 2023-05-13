@@ -67,10 +67,12 @@ library
                     , Data.ALaCarte
                     , Data.Mutable
                     , Data.Trie
+                    , Scratch
                     , Text.BSP.Monolith
                     , Text.ScannerGeneric
                     , Refl
                     , Util
+                    , Vararg
 
     -- Modules included in this library but not exported.
     -- other-modules:

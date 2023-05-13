@@ -2,7 +2,7 @@
 
 module Text.BSP.Monolith where
 
-import Control.Applicative ( Alternative(..) )
+import Control.Applicative ( Alternative(..), (<**>) )
 import Control.Monad ( void )
 import Control.Monad.Trans.Class ( MonadTrans(..) )
 import Control.Monad.Trans.Except ( ExceptT(..), throwE, runExceptT, runExcept )
@@ -118,6 +118,12 @@ chainl1 px pop = px >>= loop
 
 chainl :: Monad m => BSPT m a -> BSPT m (a -> a -> a) -> a -> BSPT m a
 chainl px pop x = chainl1 px pop ||| pure x
+
+chainPre :: Monad m => BSPT m (a -> a) -> BSPT m a -> BSPT m a
+chainPre pop px = foldr (.) id <$> many pop <*> px
+
+chainPost :: Monad m => BSPT m (a -> a) -> BSPT m a -> BSPT m a
+chainPost pop px = px <**> (foldr (.) id <$> many pop)
 
 skipMany :: Monad m => BSPT m a -> BSPT m ()
 skipMany = void . many
