@@ -39,10 +39,10 @@ parse :: BSP a -> ByteString -> Parsed a
 parse p inp = runExcept (fst <$> runBSP p (inp, 0))
 
 instance Monad m => Applicative (BSPT m) where
-  pure x = BSPT (\ (_, off) -> return (x, off))
+  pure x = BSPT (\ ~(_, off) -> return (x, off))
 
   (<*>) :: BSPT m (a -> b) -> BSPT m a -> BSPT m b
-  pf <*> px = BSPT $ \ (inp, off) -> do
+  pf <*> px = BSPT $ \ ~(inp, off) -> do
     (f, off')  <- runBSPT pf (inp, off)
     (x, off'') <- runBSPT px (inp, off')
     return (f x, off'')
@@ -50,20 +50,20 @@ instance Monad m => Applicative (BSPT m) where
 instance Monad m => Monad (BSPT m) where
   return = pure
 
-  px >>= f = BSPT $ \ (inp, off) -> do
+  px >>= f = BSPT $ \ ~(inp, off) -> do
     (x, off') <- runBSPT px (inp, off)
     runBSPT (f x) (inp, off')
 
 instance MonadTrans BSPT where
-  lift m = BSPT (\ (_, off) -> lift ((,off) <$> m))
+  lift m = BSPT (\ ~(_, off) -> lift ((,off) <$> m))
 
 eof :: Monad m => BSPT m ()
-eof = BSPT (\ (inp, off) -> if   isNothing (inp `BS.indexMaybe` off)
+eof = BSPT (\ ~(inp, off) -> if   isNothing (inp `BS.indexMaybe` off)
                             then return ((), off)
                             else throwE ["EOF not reached yet"])
 
 satisfy :: Monad m => (Word8 -> Bool) -> BSPT m Word8
-satisfy p = BSPT $ \ (inp, off) ->
+satisfy p = BSPT $ \ ~(inp, off) ->
   let chr = inp `BS.indexMaybe` off
   in  case chr of
         Just c  -> if   p c
@@ -78,7 +78,7 @@ satisfy p = BSPT $ \ (inp, off) ->
         Nothing -> throwE ["reached EOF"]
 
 char :: Monad m => Word8 -> BSPT m Word8
-char c = BSPT $ \ (inp, off) ->
+char c = BSPT $ \ ~(inp, off) ->
   let chr = inp `BS.indexMaybe` off
   in  case chr of
         Just c' -> if   c == c'
@@ -109,13 +109,13 @@ spaces :: Monad m => BSPT m ()
 spaces = void (many space)
 
 line :: Monad m => BSPT m ByteString
-line = BSPT $ \ (inp, off) -> do
+line = BSPT $ \ ~(inp, off) -> do
   let lfc8 = toC8 '\n'
   (r, off') <- runBSPT (some (satisfy (/= lfc8)) ||| ([] <$ char lfc8)) (inp, off)
   return (if null r then "" else BS.take (off' - off) (BS.drop off inp), off' + 1)
 
 peek :: Monad m => BSPT m ByteString
-peek = BSPT (\ (inp, off) -> return (BS.drop off inp, off))
+peek = BSPT (\ ~(inp, off) -> return (BS.drop off inp, off))
 
 chainr1 :: Monad m => BSPT m a -> BSPT m (a -> a -> a) -> BSPT m a
 chainr1 px pop = loop
@@ -183,9 +183,12 @@ instance Monad m => Bifunctor (ExceptT' m) where
     Right r -> Right (f r)
 
 hijack :: Monad m => BSPT m a -> [String] -> BSPT m a
-hijack p newMessages = BSPT $ \ (inp, off) ->
-  let mresult = runBSPT p (inp, off)
-  in  unExceptT' $ first (const newMessages) (ExceptT' mresult)
+hijack p newMessages = BSPT $ \ ~(inp, off) ->
+  unExceptT' $ first (const newMessages) (ExceptT' (runBSPT p (inp, off)))
+
+label :: Monad m => BSPT m a -> String -> BSPT m a
+label p name = BSPT $ \ ~(inp, off) ->
+  unExceptT' $ first (concat ["--", name, "--"] :) (ExceptT' (runBSPT p (inp, off)))
 
 coalesce :: (a -> a -> a) -> Either a b -> Either a b -> Either a b
 coalesce _ l@(Right _) _        = l
@@ -205,7 +208,7 @@ fromC8 = w2c
 -- be successful more often.
 infixr 5 |||
 (|||) :: Monad m => BSPT m a -> BSPT m a -> BSPT m a
-x ||| y = BSPT $ \ (inp, off) -> ExceptT $
+x ||| y = BSPT $ \ ~(inp, off) -> ExceptT $
   coalesceErrors <$> runExceptT (runBSPT x (inp, off)) <*> runExceptT (runBSPT y (inp, off))
 
 instance Monad m => Alternative (BSPT m) where
