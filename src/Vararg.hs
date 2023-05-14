@@ -10,6 +10,3 @@ instance {-# OVERLAPPABLE #-} (x ~ x') => Constantly x x' where
 
 instance {-# OVERLAPPING #-} Constantly x b => Constantly x (a -> b) where
   constantly x _ = constantly x
-
-testCons :: Int
-testCons = constantly 5 '2' [] Nothing (Right "what") () undefined
