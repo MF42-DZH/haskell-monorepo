@@ -1,6 +1,9 @@
 {-# LANGUAGE DeriveFunctor, TupleSections, ScopedTypeVariables, InstanceSigs #-}
 {-# LANGUAGE LambdaCase, OverloadedStrings #-}
 
+-- A one-file monolithic parser-combinator module for ByteStrings.
+-- Intended for performance and minimal memory usage in competitive programming.
+-- If only simple tokenisation is needed, use Text.ScannerGeneric instead.
 module Text.BSP.Monolith where
 
 import Control.Applicative ( Alternative(..), (<**>) )
