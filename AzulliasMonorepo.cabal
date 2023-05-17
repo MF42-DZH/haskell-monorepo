@@ -62,9 +62,11 @@ library
     -- Cabal doesn't support any kind of wildcard expose which is stupid as hell.
     -- But the maintainers won't budge so goddamn you all.
     exposed-modules:  Control.Concurrent.Joinable
+                    , Control.Monad.Freer
                     , Control.Monad.Trans.BiState
                     , Control.Monad.Trans.RState
                     , Data.ALaCarte
+                    , Data.Auto
                     , Data.Mutable
                     , Data.Trie
                     , Scratch
@@ -175,6 +177,7 @@ library
                     , dsp
                     , colour
                     , compdata
+                    , trivial-constraint
 
     -- Directories containing source files.
     hs-source-dirs:   src
