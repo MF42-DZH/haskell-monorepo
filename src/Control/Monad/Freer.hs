@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs, LambdaCase #-}
 
 -- https://okmij.org/ftp/Computation/free-monad.html
-module Freer ( Freer(..), etaF ) where
+module Control.Monad.Freer ( Freer(..), etaF ) where
 
 import Control.Monad
 

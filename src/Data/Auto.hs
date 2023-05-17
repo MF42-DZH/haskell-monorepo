@@ -2,12 +2,14 @@
 {-# LANGUAGE MultiParamTypeClasses, AllowAmbiguousTypes, ScopedTypeVariables #-}
 {-# LANGUAGE GADTs, TypeFamilies, DataKinds, ConstraintKinds, UndecidableInstances #-}
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE InstanceSigs #-}
 
 -- An Antimatter Dimensions Automator DSL for Haskell.
 module Data.Auto where
 
 import Control.Monad.Free
 import Data.Comp.Ops
+import Data.Dynamic
 import Data.List
 import Data.Proxy
 
@@ -16,7 +18,7 @@ exampleProgram = do
   pause (Interval "0.05" S)
   respecAndLoad
   unlock Dilation
-  while (Pending RM `IsLT` Numeric "1e2000") $ do
+  while (Pending RM .<. Numeric "1e2000") $ do
     start Dilation
     respecAndLoad
     pause (Interval "1" S)
@@ -31,7 +33,7 @@ exampleProgram = do
 
 exampleProgram2 :: AutomatorProgram
 exampleProgram2 = do
-  -- mapM_ (uncurry runChallenge) (zip [EC2, EC3, EC5, EC1, EC4, EC8] (repeat "ALID"))
+  mapM_ (uncurry runChallenge) (zip [EC2, EC3, EC5, EC1, EC4, EC8] (repeat "ALID"))
   runChallenge EC6 "ALAC"
   runChallenge EC7 "CS07"
   runChallenge EC9 "ALID"
@@ -43,10 +45,10 @@ exampleProgram2 = do
       studies Respec
       studies (Load (Name tree) False)
 
-    runChallenge ec tree = while (CompletionsOf ec `IsLT` Numeric "5") $ do
+    runChallenge ec tree = while (CompletionsOf ec .<. Numeric "5") $ do
       respecAndLoad tree
       start ec
-      wait (Pending Completions `IsGTE` Numeric "5")
+      wait (Pending Completions .>=. Numeric "5")
       prestige Eternity
 
 exampleProgram3 :: AutomatorProgram
@@ -148,6 +150,23 @@ data Comparison
   | IsGTE Currency Currency
   | IsGT Currency Currency
 
+infix 4 .<.
+infix 4 .<=.
+infix 4 .>=.
+infix 4 .>.
+
+(.<.) :: Currency -> Currency -> Comparison
+(.<.) = IsLT
+
+(.<=.) :: Currency -> Currency -> Comparison
+(.<=.) = IsLTE
+
+(.>=.) :: Currency -> Currency -> Comparison
+(.>=.) = IsGTE
+
+(.>.) :: Currency -> Currency -> Comparison
+(.>.) = IsGT
+
 instance Show Comparison where
   show (IsLT l r)  = concat [show l, " < ", show r]
   show (IsLTE l r) = concat [show l, " <= ", show r]
@@ -200,18 +219,18 @@ pause :: (Pauseable p, Pause :<: f) => p -> Free f ()
 pause intv = injectF (Pause intv (Pure ()))
 
 data While t
-  = While Comparison t t
+  = While Comparison Dynamic t
   deriving Functor
 
-while :: While :<: f => Comparison -> Free f () -> Free f ()
-while cond body = injectF (While cond body (Pure ()))
+while :: (Typeable f, While :<: f) => Comparison -> Free f () -> Free f ()
+while cond body = injectF (While cond (toDyn body) (Pure ()))
 
 data If t
-  = If Comparison t t
+  = If Comparison Dynamic t
   deriving Functor
 
-if' :: If :<: f => Comparison -> Free f () -> Free f ()
-if' cond body = injectF (If cond body (Pure ()))
+if' :: (Typeable f, If :<: f) => Comparison -> Free f () -> Free f ()
+if' cond body = injectF (If cond (toDyn body) (Pure ()))
 
 data Toggle
   = On | Off
@@ -295,15 +314,14 @@ instance Functor Wait where
 wait :: (CanWaitFor cond, Wait :<: f) => cond -> Free f ()
 wait c = injectF (Wait c (Pure ()))
 
-
 data Until t where
-  Until :: CanWaitFor c => c -> t -> t -> Until t
+  Until :: CanWaitFor c => c -> Dynamic -> t -> Until t
 
 instance Functor Until where
-  fmap f (Until c b t)         = Until c (f b) (f t)
+  fmap f (Until c b t)         = Until c b (f t)
 
-until :: (CanWaitFor c, Until :<: f) => c -> Free f () -> Free f ()
-until cond body = injectF (Until cond body (Pure ()))
+until :: (CanWaitFor c, Typeable f, Until :<: f) => c -> Free f () -> Free f ()
+until cond body = injectF (Until cond (toDyn body) (Pure ()))
 
 data Prestige t where
   Prestige :: CanPrestigeAt layer => layer -> Bool -> Bool -> t -> Prestige t
@@ -457,10 +475,10 @@ type Automator =
 
 type AutomatorProgram = Free Automator ()
 
-class Compile f where
-  compile :: Compile g => f (Free g a) -> [String]
+class Typeable f => Compile f where
+  compile :: (Typeable a, Compile g) => f (Free g a) -> [String]
 
-compile' :: Compile f => Free f a -> [String]
+compile' :: (Typeable a, Compile f) => Free f a -> [String]
 compile' (Free f) = compile f
 compile' (Pure _) = []
 
@@ -485,16 +503,19 @@ instance Compile Wait where
   compile (Wait cond next) = ("WAIT " ++ show cond) : compile' next
 
 instance Compile If where
+  compile :: forall g a . (Typeable a, Compile g) => If (Free g a) -> [String]
   compile (If cond body next) =
-    (("IF " ++ show cond ++ " {") : (fmap ("\t" ++) (compile' body)) ++ ["}"]) ++ compile' next
+    (("IF " ++ show cond ++ " {") : (fmap ("\t" ++) (compile' (fromDyn body undefined :: Free g a))) ++ ["}"]) ++ compile' next
 
 instance Compile While where
+  compile :: forall g a . (Typeable a, Compile g) => While (Free g a) -> [String]
   compile (While cond body next) =
-    (("WHILE " ++ show cond ++ " {") : (fmap ("\t" ++) (compile' body)) ++ ["}"]) ++ compile' next
+    (("WHILE " ++ show cond ++ " {") : (fmap ("\t" ++) (compile' (fromDyn body undefined :: Free g a))) ++ ["}"]) ++ compile' next
 
 instance Compile Until where
+  compile :: forall g a . (Typeable a, Compile g) => Until (Free g a) -> [String]
   compile (Until cond body next) =
-    (("UNTIL " ++ show cond ++ " {") : (fmap ("\t" ++) (compile' body)) ++ ["}"]) ++ compile' next
+    (("UNTIL " ++ show cond ++ " {") : (fmap ("\t" ++) (compile' (fromDyn body undefined :: Free g a))) ++ ["}"]) ++ compile' next
 
 instance Compile Prestige where
   compile (Prestige l nw r next) =
