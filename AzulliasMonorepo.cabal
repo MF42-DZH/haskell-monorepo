@@ -69,6 +69,7 @@ library
                     , Data.Auto
                     , Data.Mutable
                     , Data.Trie
+                    , Data.WadC
                     , Scratch
                     , Text.BSP.Monolith
                     , Text.ScannerGeneric

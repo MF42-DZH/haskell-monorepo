@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeOperators, DeriveFunctor, FlexibleContexts, RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, AllowAmbiguousTypes, ScopedTypeVariables #-}
+{-# LANGUAGE QuantifiedConstraints, KindSignatures #-}
 
 module Data.ALaCarte where
 
@@ -223,3 +224,42 @@ evalRPN = execute seq runRPN
 
 evalQF :: Double -> Double -> Double -> [Double]
 evalQF a b c = evalRPN (quadForm :: Free (FullRPN Double) ()) [c, b, a]
+
+-- Hm?
+
+data Teletype a
+  = GetChar (Char -> a)
+  | PutChar Char a
+  deriving Functor
+
+data FileSystem a
+  = ReadFile FilePath (String -> a)
+  | WriteFile FilePath String a
+  deriving Functor
+
+getCharF :: Teletype :<: f => Free f Char
+getCharF = injectF (GetChar Pure)
+
+putCharF :: Teletype :<: f => Char -> Free f ()
+putCharF c = injectF (PutChar c (Pure ()))
+
+readFileF :: FileSystem :<: f => FilePath -> Free f String
+readFileF path = injectF (ReadFile path Pure)
+
+writeFileF :: FileSystem :<: f => FilePath -> String -> Free f ()
+writeFileF path contents = injectF (WriteFile path contents (Pure ()))
+
+class Functor f => ExecIO f where
+  execIO :: f (IO a) -> IO a
+
+instance (ExecIO f, ExecIO g) => ExecIO (f :+: g) where
+  execIO (Inl f) = execIO f
+  execIO (Inr f) = execIO f
+
+instance ExecIO Teletype where
+  execIO (GetChar f)   = getChar >>= f
+  execIO (PutChar c n) = putChar c >> n
+
+instance ExecIO FileSystem where
+  execIO (ReadFile p f)    = readFile p >>= f
+  execIO (WriteFile p c n) = writeFile p c >> n
