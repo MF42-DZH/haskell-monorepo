@@ -4,52 +4,49 @@
 module Data.WadC where
 
 import Control.Applicative.Free.Fast
+import Control.Monad
 import Data.Comp.Ops
 import Data.List
+import Util
 
 helloWorld :: WadC ()
 helloWorld = WadC (include "standard.h") $ do
   def "main" [] $ do
     call "box" (int <$> [0, 128, 160, 256, 256])
-    call "movestep" [int 32, int 32]
-    call "thing" []
+    call "movestep" (coords 32 32)
+    call0 "thing"
     pure ()
   pure ()
 
 complex :: WadC ()
-complex = WadC (include "standard.h" *> include "monsters.h" *> include "pickups.h") $ do
+complex = WadC (includeAll ["standard.h", "monsters.h", "pickups.h"]) $ do
   boring
   boring2
 
   def "main" [] $ do
     call "pushpop" $ pure $ do
-      call "movestep" [int 32, int 32]
-      call "thing" []
+      call "movestep" (coords 32 32)
+      call0 "thing"
       pure ()
-    call "boring" $ pure $ choice ((`call` []) <$> ["shotgun", "chaingun"])
-    replicateA 3 room
-    call "boring2" []
+    call "boring" $ pure $ choice (call0 <$> ["shotgun", "chaingun"])
+    replicateM_ 3 room
+    call0 "boring2"
     pure ()
 
   pure ()
   where
-    replicateA :: Applicative f => Int -> f a -> f [a]
-    replicateA n x
-      | n > 0     = (:) <$> x <*> replicateA (n - 1) x
-      | otherwise = pure []
-
     room =
-         (foldr (\ x b -> call x [] *> b) (pure ()) ["boring2", "boring2", "rotright"])
+         traverse call0 ["boring2", "boring2", "rotright"]
       *> call "move" [int 256]
 
     boring = def "boring" ["x"] $ do
       call "box" (int <$> [0, 128, 160, 256, 256])
       call "pushpop" $ pure $ do
-        call "movestep" [int 96, int 96]
+        call "movestep" (coords 96 96)
         call "ibox" (int <$> [24, 128, 200, 64, 64])
-        call "movestep" [int 32, int 32]
-        call "x" []
-        call "thing" []
+        call "movestep" (coords 32 32)
+        call0 "x"
+        call0 "thing"
         pure ()
       call "move" [int 256]
       pure ()
@@ -75,8 +72,8 @@ newtype ExprC a = ExprC { unExprC :: ExprF a }
 data BlockC a where
   BlockC :: (ExprC :<: f, Compilable f) => Ap f b -> BlockC a
 
-block :: (ExprC :<: f, Compilable f) => Ap f b -> BlockC a
-block = BlockC
+-- block :: (ExprC :<: f, Compilable f) => Ap f b -> BlockC a
+-- block = BlockC
 
 type ProgF = (ExprC :+: DefC)
 
@@ -93,11 +90,17 @@ injectExpr x = liftAp (inj (ExprC (inj x)))
 int :: ExprC :<: f => Int -> Ap f a
 int x = injectExpr (IntC x)
 
+coords :: ExprC :<: f => Int -> Int -> [Ap f a]
+coords x y = [int x, int y]
+
 string :: ExprC :<: f => String -> Ap f a
 string x = injectExpr (StringC x)
 
 include :: IncludeC :<: f => String -> Ap f a
 include x = liftAp (inj (IncludeC x))
+
+includeAll :: IncludeC :<: f => [String] -> Ap f ()
+includeAll = traverse_ include
 
 choice :: (ExprC :<: f, Compilable f) => [Ap f b] -> Ap f a
 choice cs = injectExpr (ChoiceC (fmap BlockC cs))
@@ -105,11 +108,14 @@ choice cs = injectExpr (ChoiceC (fmap BlockC cs))
 ifte :: (ExprC :<: g, Compilable g) => Ap g c -> Ap g t -> Ap g f -> Ap g a
 ifte c t f = injectExpr (IfteC (BlockC c) (BlockC t) (BlockC f))
 
-def :: (DefC :<: f, ExprC :<: f, Compilable f) => String -> [String] -> Ap f b -> Ap f a
+def :: (ExprC :=: g, Compilable g) => String -> [String] -> Ap g b -> Ap ProgF a
 def n as b = liftAp (inj (DefC n as (BlockC b)))
 
-call :: (ExprC :<: f, Compilable f) => String -> [Ap f b] -> Ap f a
+call :: String -> [Ap ExprC b] -> Ap ExprC a
 call n as = injectExpr (CallC n (fmap BlockC as))
+
+call0 :: String -> Ap ExprC a
+call0 = (`call` [])
 
 compileC :: WadC a -> String
 compileC (WadC is p) = concat

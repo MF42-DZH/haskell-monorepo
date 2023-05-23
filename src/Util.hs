@@ -12,6 +12,9 @@ import Data.Bool
 import Data.STRef
 import System.Random
 
+traverse_ :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f ()
+traverse_ f = (() <$) . traverse f
+
 findM :: Monad m => (a -> m Bool) -> [a] -> m (Maybe a)
 findM _ []       = return Nothing
 findM p (x : xs) = (<|>) <$> (bool Nothing (Just x) <$> p x) <*> findM p xs
