@@ -1,4 +1,4 @@
-module Main where
+module Main where -- Solver for https://portponky.itch.io/null-hypothesis
 
 import Control.Applicative ( Alternative( (<|>) ) )
 import Data.Array ( Ix, Array, (!), (//), array, listArray )
