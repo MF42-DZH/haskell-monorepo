@@ -158,18 +158,19 @@ solve board
 
 main :: IO ()
 main = do
-  r  <- fromMaybe 0 . readMaybe <$> prompt "            How many Reds (R): "
-  g  <- fromMaybe 0 . readMaybe <$> prompt "          How many Greens (G): "
-  b  <- fromMaybe 0 . readMaybe <$> prompt "           How many Blues (B): "
-  a  <- fromMaybe 0 . readMaybe <$> prompt "      How many Antilights (A): "
-  c  <- fromMaybe 0 . readMaybe <$> prompt "     How many Complements (C): "
-  ac <- fromMaybe 0 . readMaybe <$> prompt "How many Anticomplements (AC): "
-  ap <- fromMaybe 0 . readMaybe <$> prompt "    How many Antipurples (AP): "
-  ao <- fromMaybe 0 . readMaybe <$> prompt "    How many Antioranges (AO): "
-  l  <- fromMaybe 0 . readMaybe <$> prompt "          How many Lights (L): "
+  r  <- prompt0 "            How many Reds (R): "
+  g  <- prompt0 "          How many Greens (G): "
+  b  <- prompt0 "           How many Blues (B): "
+  a  <- prompt0 "      How many Antilights (A): "
+  c  <- prompt0 "     How many Complements (C): "
+  ac <- prompt0 "How many Anticomplements (AC): "
+  ap <- prompt0 "    How many Antipurples (AP): "
+  ao <- prompt0 "    How many Antioranges (AO): "
+  l  <- prompt0 "          How many Lights (L): "
   case solve (listArray (minBound, maxBound) [r, g, b, a, c, ac, ap, ao, l]) of
     Nothing -> putStrLn "No solution found."
     Just ms -> putStrLn "Solution found (X = Remove):" >> putStr (showSol ms)
   where
     prompt msg  = putStr msg >> hFlush stdout >> getLine
+    prompt0 msg = fromMaybe 0 . readMaybe <$> prompt msg
     showSol sol = foldr (++) "" (fmap (\ m -> concat ["- ", show m, "\n"]) sol)
