@@ -171,6 +171,5 @@ main = do
     Nothing -> putStrLn "No solution found."
     Just ms -> putStrLn "Solution found (X = Remove):" >> putStr (showSol ms)
   where
-    fls         = hFlush stdout
-    prompt msg  = putStr msg >> fls >> getLine
+    prompt msg  = putStr msg >> hFlush stdout >> getLine
     showSol sol = foldr (++) "" (fmap (\ m -> concat ["- ", show m, "\n"]) sol)
