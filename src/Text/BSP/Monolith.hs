@@ -11,6 +11,7 @@ import Control.Monad ( void )
 import Control.Monad.Trans.Class ( MonadTrans(..) )
 import Control.Monad.Trans.Except ( ExceptT(..), throwE, runExceptT, runExcept )
 import Data.Bifunctor ( Bifunctor(..) )
+import Data.Bool ( bool )
 import Data.ByteString ( ByteString )
 import Data.ByteString.Internal ( c2w, w2c )
 import qualified Data.ByteString as BS
@@ -60,14 +61,21 @@ instance Monad m => Monad (BSPT m) where
 instance MonadTrans BSPT where
   lift m = BSPT (\ ~(_, off) -> lift ((,off) <$> m))
 
+-- Compatibility version of indexMaybe for lower versions of bytestring.
+infixl 9 !?
+(!?) :: ByteString -> Int -> Maybe Word8
+bs !? i
+  | i >= 0 && i < BS.length bs = Just (BS.index bs i)
+  | otherwise                  = Nothing
+
 eof :: Monad m => BSPT m ()
-eof = BSPT (\ ~(inp, off) -> if   isNothing (inp `BS.indexMaybe` off)
-                            then return ((), off)
-                            else throwE ["EOF not reached yet"])
+eof = BSPT (\ ~(inp, off) -> if   isNothing (inp !? off)
+                             then return ((), off)
+                             else throwE ["EOF not reached yet"])
 
 satisfy :: Monad m => (Word8 -> Bool) -> BSPT m Word8
 satisfy p = BSPT $ \ ~(inp, off) ->
-  let chr = inp `BS.indexMaybe` off
+  let chr = inp !? off
   in  case chr of
         Just c  -> if   p c
                    then return (c, off + 1)
@@ -82,7 +90,7 @@ satisfy p = BSPT $ \ ~(inp, off) ->
 
 char :: Monad m => Word8 -> BSPT m Word8
 char c = BSPT $ \ ~(inp, off) ->
-  let chr = inp `BS.indexMaybe` off
+  let chr = inp !? off
   in  case chr of
         Just c' -> if   c == c'
                    then return (c, off + 1)
@@ -143,6 +151,12 @@ chainPre pop px = foldr (.) id <$> many pop <*> px
 chainPost :: Monad m => BSPT m (a -> a) -> BSPT m a -> BSPT m a
 chainPost pop px = px <**> (foldr (.) id <$> many pop)
 
+pfoldr :: Monad m => (a -> b -> b) -> BSPT m a -> b -> BSPT m b
+pfoldr f p z = (foldr f z <$> many p) ||| pure z
+
+pfoldl :: Monad m => (b -> a -> b) -> BSPT m a -> b -> BSPT m b
+pfoldl f p z = (foldl f z <$> many p) ||| pure z
+
 -- For non-skip versions of many and some, use Control.Applicative.
 skipMany :: Monad m => BSPT m a -> BSPT m ()
 skipMany = void . many
@@ -171,6 +185,12 @@ choice = foldr (|||) empty
 
 failure :: Monad m => String -> BSPT m a
 failure msg = BSPT (const (throwE [msg]))
+
+branch :: Monad m => BSPT m (Either a b) -> BSPT m (a -> c) -> BSPT m (b -> c) -> BSPT m c
+branch ab ac bc = (\ e a b -> either a b e) <$> ab <*> ac <*> bc
+
+ifP :: Monad m => BSPT m Bool -> BSPT m a -> BSPT m a -> BSPT m a
+ifP cond pt pf = (\ c t f -> bool f t c) <$> cond <*> pt <*> pf
 
 newtype ExceptT' m e a
   = ExceptT' { unExceptT' :: ExceptT e m a }

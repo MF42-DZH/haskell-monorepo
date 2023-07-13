@@ -52,7 +52,7 @@ complex = WadC (includeAll ["standard.h", "monsters.h", "pickups.h"]) $ do
       pure ()
 
     boring2 = def "boring2" [] $ do
-      call "boring" [choice ((`call` []) <$> ["formerhuman", "formersergeant"])]
+      call "boring" [choice (call0 <$> ["formerhuman", "formersergeant"])]
       pure ()
 
 newtype IntC a     = IntC Int
