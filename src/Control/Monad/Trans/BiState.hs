@@ -37,9 +37,8 @@ instance MonadFix m => Monad (BiStateT bw fw m) where
 instance MonadFix m => MonadFix (BiStateT bw fw m) where
   mfix f = BiStateT (\ s -> mfix (\ ~(x, _) -> runBiStateT (f x) s))
 
-
-instance (forall bw' fw' m . Monad (BiStateT bw' fw' m)) => MonadTrans (BiStateT bw fw) where
-  lift ma = BiStateT (\ s -> (, s) <$> ma)
+liftB :: Functor m => m a -> BiStateT bw fw m a
+liftB ma = BiStateT (\ s -> (, s) <$> ma)
 
 put :: MonadFix m => fw -> BiStateT bw fw m ()
 tup :: MonadFix m => bw -> BiStateT bw fw m ()

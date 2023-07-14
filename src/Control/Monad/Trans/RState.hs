@@ -36,8 +36,8 @@ instance MonadFix m => Monad (RStateT s m) where
         (b, future) <- runRStateT (rstgf a) s
       return (b, past)
 
-instance (forall s' m . Monad (RStateT s' m)) => MonadTrans (RStateT s) where
-  lift ma = RStateT $ \ s -> (, s) <$> ma
+liftR :: Functor m => m a -> RStateT t m a
+liftR ma = RStateT $ \ s -> (, s) <$> ma
 
 -- Put, Get, Modify.
 yfidom :: Monad m => (s -> s) -> RStateT s m ()
