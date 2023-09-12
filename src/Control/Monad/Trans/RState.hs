@@ -4,7 +4,6 @@
 module Control.Monad.Trans.RState where
 
 import Control.Monad.Fix ( MonadFix(..) )
-import Control.Monad.Trans.Class ( MonadTrans, lift )
 import Data.Functor.Identity ( Identity(..) )
 
 newtype RStateT s m a

@@ -5,7 +5,6 @@
 module Control.Monad.Trans.BiState where
 
 import Control.Monad.Fix ( MonadFix(..) )
-import Control.Monad.Trans.Class ( MonadTrans, lift )
 import Data.Functor.Identity ( Identity(..) )
 
 newtype BiStateT bw fw m a

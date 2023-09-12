@@ -82,3 +82,7 @@ partition p (x : xs) =
   in  if   p x
       then (f, x : t)
       else (x : f, t)
+
+infixr 8 .:
+(.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
+(.:) = (.) . (.)
