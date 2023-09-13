@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances, FlexibleContexts, TypeOperators, GADTs #-}
 {-# LANGUAGE UndecidableInstances, RankNTypes, FunctionalDependencies #-}
+{-# LANGUAGE AllowAmbiguousTypes, ScopedTypeVariables #-}
 
 module Vararg where
 
@@ -24,14 +25,35 @@ instance {-# OVERLAPPING #-} Constantly x b => Constantly x (a -> b) where
 class MZipI fs rs | fs -> rs where
   collapse :: fs -> rs
 
-instance {-# OVERLAPPING #-} MZipI [fs] rs => MZipI [a -> fs] ([a] -> rs) where
-  collapse fs as = collapse (zipWith ($) fs as)
+class PossiblyInfinite f where
+  -- Analogous to Applicative's "pure", but must return an infinite structure.
+  -- Think "repeat" for lists, but generalised.
+  infiniteOf :: a -> f a
 
-instance {-# OVERLAPPABLE #-} ([r] ~ rs) => MZipI [r] rs where
+class ParallelAddition f where
+  -- This is analogous to zipWith, but generalised for all containers.
+  -- Note: liftA2 (or something equivalent with ap / <*>) is invalid!
+  padd :: (a -> b -> c) -> f a -> f b -> f c
+
+instance PossiblyInfinite [] where
+  infiniteOf = repeat
+
+instance ParallelAddition [] where
+  padd = zipWith
+
+instance {-# OVERLAPPING #-} (PossiblyInfinite f, ParallelAddition f, MZipI (f fs) rs) => MZipI (f (a -> fs)) (f a -> rs) where
+  collapse fs as = collapse (padd ($) fs as)
+
+instance {-# OVERLAPPABLE #-} (PossiblyInfinite f, ParallelAddition f, f r ~ rs) => MZipI (f r) rs where
   collapse = id
 
-multizip :: MZipI [f] rs => f -> rs
-multizip f = collapse (repeat f)
+multizip :: forall f fs rs . (PossiblyInfinite f, ParallelAddition f, MZipI (f fs) rs) => fs -> rs
+multizip f = collapse (infiniteOf f :: f fs)
+
+-- Emulates Clojure's map function for lists.
+-- A specialization of multizip for lists.
+multimap :: MZipI [f] rs => f -> rs
+multimap f = collapse (repeat f)
 
 class ToColl a t | t -> a where
   coll' :: Seq a -> a -> t

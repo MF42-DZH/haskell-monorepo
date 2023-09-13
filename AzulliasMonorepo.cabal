@@ -91,6 +91,7 @@ library
                     , Data.AlternativeList
                     , Data.Auto
                     , Data.Mutable
+                    , Data.Stream
                     , Data.Trie
                     , Data.WadC
                     , Scratch
