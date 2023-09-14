@@ -66,3 +66,32 @@ instance Comonad Stream where
 
 toStream :: Comonad c => (c a -> a) -> c a -> Stream (c a)
 toStream f = siterate (=>> f)
+
+-- The class of all infinite-double-sided structures.
+class TapeLike t where
+  -- Law: fwd . rev == id == rev . fwd
+  fwd :: t a -> t a
+  rev :: t a -> t a
+
+  -- Law: (writeHead x) . readHead != x (if x is not already at the tape head).
+  -- Law: readHead . (writeHead x) == x
+  readHead  :: t a -> a
+  writeHead :: a -> t a -> t a
+
+newtype Tape a = Tape (Stream a, a, Stream a)
+
+tapeOf :: a -> Tape a
+tapeOf x = Tape (streamOf x, x, streamOf x)
+
+instance TapeLike Tape where
+  fwd (Tape (rev', head', f :> fwd')) = Tape (head' :> rev', f, fwd')
+  rev (Tape (r :> rev', head', fwd')) = Tape (rev', r, head' :> fwd')
+  readHead (Tape (_, x, _))           = x
+  writeHead x (Tape (r, _, f))        = Tape (r, x, f)
+
+instance Show a => Show (Tape a) where
+  showsPrec _ (Tape (r, x, f))
+    = ('{' :) . (r' ++) . ('|' :) . (show x ++) . ('|' :) . (f' ++) . ('}' :)
+    where
+      r' = intercalate "," $ show <$> reverse (stake 10 r)
+      f' = intercalate "," $ show <$> stake 10 f

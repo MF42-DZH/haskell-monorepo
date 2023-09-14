@@ -83,7 +83,8 @@ library
     -- Modules exported by the library.
     -- Cabal doesn't support any kind of wildcard expose which is stupid as hell.
     -- But the maintainers won't budge so goddamn you all.
-    exposed-modules:  Control.Concurrent.Joinable
+    exposed-modules:  ADFGVX
+                    , Control.Concurrent.Joinable
                     , Control.Monad.Freer
                     , Control.Monad.Trans.BiState
                     , Control.Monad.Trans.RState
