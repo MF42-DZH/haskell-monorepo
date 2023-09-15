@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module ADFGVX where
 
 import Data.Char ( isAlphaNum, toLower )
