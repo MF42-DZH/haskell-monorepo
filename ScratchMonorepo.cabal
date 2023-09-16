@@ -99,6 +99,7 @@ library
                     , Data.AlternativeList
                     , Data.Auto
                     , Data.Mutable
+                    , Data.SetM
                     , Data.Stream
                     , Data.Trie
                     , Data.WadC
