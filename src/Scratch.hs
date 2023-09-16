@@ -1,10 +1,10 @@
-{-# LANGUAGE OverloadedStrings #-}
+-- {-# LANGUAGE OverloadedStrings #-}
 
 module Scratch where
 
 import Control.Applicative
-import Data.ByteString ( ByteString )
-import qualified Data.ByteString as BS
+-- import Data.ByteString ( ByteString )
+-- import qualified Data.ByteString as BS
 import Data.Char
 import Text.BSP.Monolith
 

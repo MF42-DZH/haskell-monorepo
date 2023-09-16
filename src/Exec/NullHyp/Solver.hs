@@ -173,4 +173,4 @@ main = do
   where
     prompt msg  = putStr msg >> hFlush stdout >> getLine
     prompt0 msg = fromMaybe 0 . readMaybe <$> prompt msg
-    showSol sol = foldr (++) "" (fmap (\ m -> concat ["- ", show m, "\n"]) sol)
+    showSol     = (>>= (\ m -> concat ["- ", show m, "\n"]))

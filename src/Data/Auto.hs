@@ -1,8 +1,8 @@
 {-# LANGUAGE TypeOperators, DeriveFunctor, FlexibleContexts, RankNTypes, FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses, AllowAmbiguousTypes, ScopedTypeVariables #-}
 {-# LANGUAGE GADTs, TypeFamilies, DataKinds, ConstraintKinds, UndecidableInstances #-}
-{-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE ApplicativeDo, FunctionalDependencies #-}
+{-# LANGUAGE InstanceSigs, TupleSections #-}
 
 -- An Antimatter Dimensions Automator DSL for Haskell.
 module Data.Auto where
@@ -33,7 +33,7 @@ exampleProgram = do
 
 exampleProgram2 :: AutomatorProgram
 exampleProgram2 = do
-  mapM_ (uncurry runChallenge) (zip [EC2, EC3, EC5, EC1, EC4, EC8] (repeat "ALID"))
+  mapM_ (uncurry runChallenge . (, "ALID")) [EC2, EC3, EC5, EC1, EC4, EC8]
   runChallenge EC6 "ALAC"
   runChallenge EC7 "CS07"
   runChallenge EC9 "ALID"
@@ -306,7 +306,7 @@ instance {-# OVERLAPPING #-} CanWaitFor Comparison
 instance {-# OVERLAPPABLE #-} (Show c, CanPrestigeAt c) => CanWaitFor c
 
 data Wait t where
-  Wait :: CanWaitFor cond => cond -> t -> Wait t 
+  Wait :: CanWaitFor cond => cond -> t -> Wait t
 
 instance Functor Wait where
   fmap f (Wait c t) = Wait c (f t)
@@ -505,17 +505,17 @@ instance Compile Wait where
 instance Compile If where
   compile :: forall g a . (Typeable a, Compile g) => If (Free g a) -> [String]
   compile (If cond body next) =
-    (("IF " ++ show cond ++ " {") : (fmap ("\t" ++) (compile' (fromDyn body undefined :: Free g a))) ++ ["}"]) ++ compile' next
+    (("IF " ++ show cond ++ " {") : fmap ("\t" ++) (compile' (fromDyn body undefined :: Free g a)) ++ ["}"]) ++ compile' next
 
 instance Compile While where
   compile :: forall g a . (Typeable a, Compile g) => While (Free g a) -> [String]
   compile (While cond body next) =
-    (("WHILE " ++ show cond ++ " {") : (fmap ("\t" ++) (compile' (fromDyn body undefined :: Free g a))) ++ ["}"]) ++ compile' next
+    (("WHILE " ++ show cond ++ " {") : fmap ("\t" ++) (compile' (fromDyn body undefined :: Free g a)) ++ ["}"]) ++ compile' next
 
 instance Compile Until where
   compile :: forall g a . (Typeable a, Compile g) => Until (Free g a) -> [String]
   compile (Until cond body next) =
-    (("UNTIL " ++ show cond ++ " {") : (fmap ("\t" ++) (compile' (fromDyn body undefined :: Free g a))) ++ ["}"]) ++ compile' next
+    (("UNTIL " ++ show cond ++ " {") : fmap ("\t" ++) (compile' (fromDyn body undefined :: Free g a)) ++ ["}"]) ++ compile' next
 
 instance Compile Prestige where
   compile (Prestige l nw r next) =
@@ -542,4 +542,4 @@ instance Compile StoredTime where
   compile (UseStoredTime next)    = "STORE GAME TIME Use" : compile' next
 
 instance Compile Auto where
-  compile (Auto p set next) = (intercalate " " ["AUTO", show p, show set]) : compile' next
+  compile (Auto p set next) = unwords ["AUTO", show p, show set] : compile' next

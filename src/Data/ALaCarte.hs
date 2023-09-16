@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeOperators, DeriveFunctor, FlexibleContexts, RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, AllowAmbiguousTypes, ScopedTypeVariables #-}
 {-# LANGUAGE QuantifiedConstraints, KindSignatures #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 
 module Data.ALaCarte where
 
@@ -8,9 +9,9 @@ import Control.Monad.Free
 import Data.Comp.Ops
 import Data.Proxy
 
-data Expr f = In (f (Expr f))
+newtype Expr f = In (f (Expr f))
 
-data Val e = Val Int
+newtype Val e = Val Int
   deriving Functor
 type IntExpr = Expr Val
 
@@ -38,7 +39,7 @@ foldExpr :: Functor f => (f a -> a) -> Expr f -> a
 foldExpr f (In t) = f (fmap (foldExpr f) t)
 
 eval :: Eval f => Expr f -> Int
-eval expr = foldExpr evalAlgebra expr
+eval = foldExpr evalAlgebra
 
 injectE :: (g :<: f) => g (Expr f) -> Expr f
 injectE = In . inj
