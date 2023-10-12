@@ -7,9 +7,11 @@ import Data.List ( isSuffixOf, stripPrefix )
 import Data.Maybe ( fromMaybe )
 import Codec.Picture
 import System.Directory
+import System.Environment
+import System.Exit
 
-isFinished :: DynamicImage -> Bool
-isFinished img = any ((> 3840) . ($ img)) [dynWidth, dynHeight]
+isFinished :: Int -> DynamicImage -> Bool
+isFinished threshold img = any ((> threshold) . ($ img)) [dynWidth, dynHeight]
 
 dynWidth, dynHeight :: DynamicImage -> Int
 dynWidth  = dynamicMap imageWidth
@@ -25,8 +27,15 @@ processedDir, toProcessDir :: FilePath
 processedDir = "processed"
 toProcessDir = "to_process"
 
+notSingleton :: [a] -> Bool
+notSingleton [_] = False
+notSingleton _   = True
+
 main :: IO ()
 main = do
+  args <- getArgs
+  when (notSingleton args) (putStrLn "Put one numeric argument." >> exitFailure)
+
   processed <- listDirectory processedDir
   !_        <- forM_ processed (\ pth -> do
     let src = processedDir ++ '/' : pth
@@ -41,7 +50,7 @@ main = do
     let dst  = processedDir ++ '/' : fromMaybe pth' (stripPrefix (toProcessDir ++ "/") pth')
 
     Right img <- readImage pth'
-    when (isFinished img) (do
+    when (isFinished (read (head args)) img) (do
       !x <- renamePath pth' dst
       !_ <- putStrLn ("Moving finished image " ++ pth' ++ " to " ++ dst ++ ".")
       return x))

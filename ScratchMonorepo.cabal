@@ -165,8 +165,8 @@ library
                     , QuickCheck
                     , hedgehog
                     , ansi-terminal
-                    -- , GLUT: Incompatible with transformers-0.6
-                    -- , OpenGL
+                    , GLUT
+                    , OpenGL
                     , data-clist
                     , data-fix
                     , clock

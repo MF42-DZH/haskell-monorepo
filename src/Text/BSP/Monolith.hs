@@ -34,7 +34,7 @@ newtype BSPT m a
 type BSP a = BSPT Identity a
 
 runBSP :: BSP a -> (ByteString, Int) -> Result a
-runBSP p = runBSPT p
+runBSP = runBSPT
 
 parseT :: Monad m => BSPT m a -> ByteString -> m (Parsed a)
 parseT p inp = runExceptT (fst <$> runBSPT p (inp, 0))
