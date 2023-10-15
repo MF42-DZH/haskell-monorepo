@@ -98,6 +98,8 @@ library
                     , Data.ALaCarte
                     , Data.AlternativeList
                     , Data.Auto
+                    , Data.DList
+                    , Data.ListClass
                     , Data.Mutable
                     , Data.SetM
                     , Data.Stream

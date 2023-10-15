@@ -1,8 +1,10 @@
-{-# LANGUAGE RankNTypes, ScopedTypeVariables, Trustworthy #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables, Trustworthy, BangPatterns #-}
 
 module Util where
 
 import Control.Applicative ( (<|>) )
+import Control.Concurrent
+import Control.Exception
 import Control.Monad
 import Control.Monad.ST
 import Data.Array
@@ -10,6 +12,7 @@ import Data.Array.MArray
 import Data.Array.ST
 import Data.Bool
 import Data.STRef
+import System.IO ( hFlush, stdout )
 import System.Random
 
 traverse_ :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f ()
@@ -86,3 +89,14 @@ partition p (x : xs) =
 infixr 8 .:
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (.:) = (.) . (.)
+
+forkAwaitable :: IO a -> IO (MVar (Either SomeException a))
+forkAwaitable action = do
+  var <- newEmptyMVar :: IO (MVar a)
+  !_  <- forkFinally action (putMVar var)
+  return var
+-- Use takeMVar to await the result.
+-- Use mapM takeMVar / mapM_ takeMVar to await multiple threads in a list.
+
+prompt :: String -> IO String
+prompt msg = putStr msg >> hFlush stdout >> getLine
