@@ -83,6 +83,15 @@ executable ImageSorterStrict
                     , directory
                     , JuicyPixels
 
+executable Duet
+    import:           shared-props
+    main-is:          Exec/Duet.hs
+    build-depends:    base ^>=4.18.0.0
+                    , compdata
+                    , containers
+                    , transformers
+    other-modules:    Control.Concurrent.Fake
+
 library
     -- Import common warning flags.
     import:           shared-props
@@ -91,6 +100,7 @@ library
     -- Cabal doesn't support any kind of wildcard expose which is stupid as hell.
     -- But the maintainers won't budge so goddamn you all.
     exposed-modules:  ADFGVX
+                    , Control.Concurrent.Fake
                     , Control.Concurrent.Joinable
                     , Control.Monad.Freer
                     , Control.Monad.Trans.BiState
@@ -214,3 +224,4 @@ library
                     , colour
                     , compdata
                     , trivial-constraint
+                    , sockets

@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes, ScopedTypeVariables, Trustworthy, BangPatterns #-}
+{-# OPTIONS_GHC -fno-warn-incomplete-uni-patterns #-}
 
 module Util where
 
@@ -10,6 +11,7 @@ import Control.Monad.ST
 import Data.Array
 import Data.Array.MArray
 import Data.Array.ST
+import Data.Bifunctor
 import Data.Bool
 import Data.STRef
 import System.IO ( hFlush, stdout )
@@ -43,8 +45,27 @@ count p = go 0
           | p x       = go (acc + 1) xs
           | otherwise = go acc xs
 
+shufflePure :: Int -> [a] -> [a]
+shufflePure seed xxs
+  = snd (iterate (merge . go [] []) (mkStdGen seed, xxs) !! 8)
+    where
+      go acc1 acc2 (gen, [])     = (gen, acc1, acc2)
+      go acc1 acc2 (gen, x : xs) =
+        let (n, gen') = randomR (0, 1) gen :: (Int, StdGen)
+        in  case n of
+          0  -> go (x : acc1) acc2 (gen', xs)
+          ~1 -> go acc1 (x : acc2) (gen', xs)
+      
+      merge (gen, [], acc2)       = (gen, acc2)
+      merge (gen, acc1, [])       = (gen, acc1)
+      merge (gen, x : xs, y : ys) =
+        let (n, gen') = randomR (0, 1) gen :: (Int, StdGen)
+        in case n of
+          0  -> second (x :) $ merge (gen', xs, y : ys)
+          ~1 -> second (y :) $ merge (gen', x : xs, ys)
+
 shuffleST' :: Int -> [a] -> [a]
-shuffleST' seed= fst . shuffleST (mkStdGen seed)
+shuffleST' seed = fst . shuffleST (mkStdGen seed)
 
 shuffleST :: forall x g . RandomGen g => g -> [x] -> ([x], g)
 shuffleST gen xs = runST comp
@@ -89,14 +110,6 @@ partition p (x : xs) =
 infixr 8 .:
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (.:) = (.) . (.)
-
-forkAwaitable :: IO a -> IO (MVar (Either SomeException a))
-forkAwaitable action = do
-  var <- newEmptyMVar :: IO (MVar a)
-  !_  <- forkFinally action (putMVar var)
-  return var
--- Use takeMVar to await the result.
--- Use mapM takeMVar / mapM_ takeMVar to await multiple threads in a list.
 
 prompt :: String -> IO String
 prompt msg = putStr msg >> hFlush stdout >> getLine
