@@ -109,6 +109,7 @@ library
                     , Data.AlternativeList
                     , Data.Auto
                     , Data.DList
+                    , Data.Functional
                     , Data.ListClass
                     , Data.Mutable
                     , Data.SetM
@@ -224,4 +225,3 @@ library
                     , colour
                     , compdata
                     , trivial-constraint
-                    , sockets
